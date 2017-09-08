@@ -3,48 +3,358 @@
   <head>
     <meta charset="utf-8">
     <title>Foodlette</title>
+    <style>
+      #spin {
+        border: 4px solid #2196F3;
+        width: 5em;
+        height: 3em;
+        border-radius: 0.3em;
+        background-color: #03A9F4;
+        font-weight: bold;
+        color: white;
+      }
+      .controls * {
+        font-size: 3em;
+        padding: 0.2em;
+        margin: 0.2em;
+      }
+    </style>
   </head>
   <body>
-    <input type="button" value="spin" style="float:left;border: 4px solid #2196F3;width: 4em;height: 2em;border-radius:5px;background-color: #03A9F4;font-weight: bold;color: white;font-size: 1.5em;" id='spin' />
     <canvas id="canvas" width="800" height="800"></canvas>
+    <div class="controls">
+        <select class="" name="near">
+          <option value="" disabled selected>distance?</option>
+          <option value="-1">Any</option>
+          <option value="1">Very close</option>
+          <option value="2">Close</option>
+          <option value="3">Neutral</option>
+          <option value="4">Far</option>
+          <option value="5">Very far</option>
+          <option value="6">Unknown</option>
+        </select>
+        <select class="" name="togo">
+          <option value="" disabled selected>To-go?</option>
+          <option value="7">Any</option>
+          <option value="1">Delivery</option>
+          <option value="2">Pick up</option>
+          <option value="3">Eat in</option>
+          <option value="4">Eat in &amp; Delivery</option>
+          <option value="5">Eat in &amp; Pick up</option>
+          <option value="6">Unknown</option>
+        </select>
+        <input type="number" min="0" max="200" placeholder="speed"/>
+        <input type="button" id="spin" value="spin" />
+    </div>
   </body>
   <script type="text/javascript">
+    ///
+    /*
+    * near: [1-5] where 1 is very near
+    * toGo: [1-4] 1 only to-go, 2 pickup-only, 3 any, 4 no to-go
+    * avgTicket: avg ticket price
+    * speed: avg waiting time (in minutes)
+    * nomLevel: [0-100]
+    */
+    const NEAR = {
+      VeryClose: 1,   // 2km
+      Close: 2,       // 5km
+      Neutral: 3,     // 8km
+      Far: 4,         // 12km
+      VeryFar: 5,     // 20km
+      Unknown: 6
+    };
+
+    const TOGO = {
+      DeliveryOnly: 1,
+      PickUpOnly: 2,
+      EatInOnly: 3,
+      EatInAndDelivery: 4,
+      EatInAndPickUp: 5,
+      DeliveryAndPickup: 6,
+      Any: 7
+    };
+
     var options = [
-      "Hamburguesas el Campeón",
-      "Domino's Pizza",
-      "Bonkey Sushi",
-      "Oriental Wok",
-      "Sabores Portugueses",
-      "Crepé de Paris",
-      "Kebabs",
-      "Little Caesars",
-      "HEB",
-      "Tacos Primo",
-      "Bona elige",
-      "Bono elige",
-      "McDonald's",
-      "Carls Junior",
-      "Shing Long",
-      "Papalote",
-      "Los Migueles",
-      "Caprichos",
-      "Hong Fat",
-      "Zitla",
-      "Trece Lunas",
-      "El Gaucho",
-      "Sushi Express",
-      "Cueva Carvajal",
-      "Buffalo Wild Wings",
-      "Wings Stop",
-      "Mirai Sushi",
-      "IHOP",
-      "Muncher House",
-      "Jack & Ray",
-      "La Mexicana",
-      "Todo Empanadas",
-      "Petunias",
-      "I Like Pizza",
-      "Leo's Burguer"
+      {
+        name: "Hamburguesas el Campeón",
+        near: NEAR.Far,
+        toGo: TOGO.PickUpOnly,
+        avgTicket: 70,
+        speed: 10,
+        nomLevel: 75
+      },
+      {
+        name: "Domino's Pizza",
+        near: NEAR.VeryClose,
+        toGo: TOGO.DeliveryAndPickup,
+        avgTicket: 150,
+        speed: 40,
+        nomLevel: 80
+      },
+      { name: "Bonkey Sushi",
+        near: NEAR.Far,
+        toGo: TOGO.Any,
+        avgTicket: 100,
+        speed: 20,
+        nomLevel: 65
+      },
+      {
+        name: "Oriental Wok",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 130,
+        speed: 30,
+        nomLevel: 85
+      },
+      {
+        name: "Sabores Portugueses",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndDelivery,
+        avgTicket: 120,
+        speed: 20,
+        nomLevel: 85
+      },
+      {
+        name: "Crepé de Paris",
+        near: NEAR.Close,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 140,
+        speed: 25,
+        nomLevel: 80
+      },
+      {
+        name: "Kebabs",
+        near: NEAR.Unknown,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 100,
+        speed: 20,
+        nomLevel: 70
+      },
+      {
+        name: "Little Caesars",
+        near: NEAR.Close,
+        toGo: TOGO.PickUpOnly,
+        avgTicket: 70,
+        speed: 10,
+        nomLevel: 80
+      },
+      {
+        name: "HEB",
+        near: NEAR.VeryClose,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 70,
+        speed: 10,
+        nomLevel: 70
+      },
+      {
+        name: "Tacos Primo",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 70,
+        speed: 10,
+        nomLevel: 70
+      },
+      {
+        name: "Bona elige",
+        near: NEAR.Unknown,
+        toGo: TOGO.Any,
+        avgTicket: 100,
+        speed: 30,
+        nomLevel: 100
+      },
+      {
+        name: "Bono elige",
+        near: NEAR.Unknown,
+        toGo: TOGO.Any,
+        avgTicket: 100,
+        speed: 30,
+        nomLevel: 100
+      },
+      {
+        name: "McDonald's",
+        near: NEAR.VeryClose,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 70,
+        speed: 10,
+        nomLevel: 70
+      },
+      {
+        name: "Carls Junior",
+        near: NEAR.VeryClose,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 120,
+        speed: 10,
+        nomLevel: 75
+      },
+      {
+        name: "Shing Long",
+        near: NEAR.VeryFar,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 75,
+        speed: 25,
+        nomLevel: 80
+      },
+      {
+        name: "Papalote",
+        near: NEAR.Close,
+        toGo: TOGO.Any,
+        avgTicket: 150,
+        speed: 30,
+        nomLevel: 80
+      },
+      {
+        name: "Los Migueles",
+        near: NEAR.Close,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 80,
+        speed: 20,
+        nomLevel: 65
+      },
+      {
+        name: "Caprichos",
+        near: NEAR.VeryFar,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 100,
+        speed: 15,
+        nomLevel: 80
+      },
+      {
+        name: "Hong Fat",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 50,
+        speed: 5,
+        nomLevel: 75
+      },
+      {
+        name: "Zitla",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 130,
+        speed: 30,
+        nomLevel: 70
+      },
+      {
+        name: "Trece Lunas",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 120,
+        speed: 40,
+        nomLevel: 85
+      },
+      {
+        name: "El Gaucho",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 300,
+        speed: 25,
+        nomLevel: 85
+      },
+      {
+        name: "Sushi Express",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 100,
+        speed: 20,
+        nomLevel: 75
+      },
+      {
+        name: "Cueva Carvajal",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 200,
+        speed: 20,
+        nomLevel: 75
+      },
+      {
+        name: "Buffalo Wild Wings",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 150,
+        speed: 25,
+        nomLevel: 70
+      },
+      {
+        name: "Wing Stop",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 120,
+        speed: 20,
+        nomLevel: 70
+      },
+      {
+        name: "Mirai Sushi",
+        near: NEAR.Unknown,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 130,
+        speed: 25,
+        nomLevel: 75
+      },
+      {
+        name: "IHOP",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 120,
+        speed: 45,
+        nomLevel: 80
+      },
+      {
+        name: "Muncher House",
+        near: NEAR.Far,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 170,
+        speed: 30,
+        nomLevel: 85
+      },
+      {
+        name: "Jack & Ray",
+        near: NEAR.Neutral,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 85,
+        speed: 15,
+        nomLevel: 75
+      },
+      {
+        name: "La Mexicana",
+        near: NEAR.Neutral,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 80,
+        speed: 15,
+        nomLevel: 85
+      },
+      {
+        name: "Todo Empanadas",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndDelivery,
+        avgTicket: 90,
+        speed: 15,
+        nomLevel: 75
+      },
+      {
+        name: "Petunias",
+        near: NEAR.Neutral,
+        toGo: TOGO.EatInOnly,
+        avgTicket: 120,
+        speed: 20,
+        nomLevel: 70
+      },
+      {
+        name: "I Like Pizza",
+        near: NEAR.VeryClose,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 80,
+        speed: 20,
+        nomLevel: 80
+      },
+      {
+        name: "Leo's Burguer",
+        near: NEAR.Close,
+        toGo: TOGO.EatInAndPickUp,
+        avgTicket: 90,
+        speed: 15,
+        nomLevel: 75
+      }
     ];
 
     var startAngle = 0;
@@ -85,8 +395,8 @@
       var canvas = document.getElementById("canvas");
       if (canvas.getContext) {
         var outsideRadius = 390;
-        var textRadius = 280;
-        var insideRadius = 160;
+        var textRadius = 340;
+        var insideRadius = 300;
 
         ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, 800, 800);
@@ -116,7 +426,7 @@
           ctx.translate(400 + Math.cos(angle + arc / 2) * textRadius,
                         400 + Math.sin(angle + arc / 2) * textRadius);
           ctx.rotate(angle + arc / 2 + Math.PI / 2);
-          var text = options[i].replace(/[^A-Z]/g, '');;
+          var text = options[i].name.replace(/[^A-Z]/g, '');;
           ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
           ctx.restore();
         }
@@ -139,7 +449,7 @@
     function spin() {
       spinAngleStart = Math.random() * 10 + 10;
       spinTime = 0;
-      spinTimeTotal = Math.random() * 3 + 4 * 200;
+      spinTimeTotal = Math.random() * 3 + 4 * 2000;
       rotateWheel();
     }
 
@@ -162,7 +472,7 @@
       var index = Math.floor((360 - degrees % 360) / arcd);
       ctx.save();
       ctx.font = 'bold 30px Helvetica, Arial';
-      var text = options[index]
+      var text = options[index].name
       ctx.fillText(text, 400 - ctx.measureText(text).width / 2, 400 + 10);
       ctx.restore();
     }
